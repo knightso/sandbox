@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html class="no-js">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>Home</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <script src="static/tinymce/tinymce.min.js"></script>
+        <script src="static/tinymce/langs/ja.js"></script>
+        <script src="static/tinymce_init.js"></script>
+        <style>
+            div.editable {
+                width: 300px;
+                height: 50px;
+                margin-left: 30px;
+            }
+            /* 編集可能な領域（エディタ）をマウスオーバーで、グレーに。 */
+            div.editable:hover {
+                background-color: Gray;
+            }
+            /* グレーにしたエディタの背景を編集中は白に戻す。 */
+            div.editable.mce-edit-focus {
+                background-color: White;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="editable" name="ed1">Tokyo</div>
+        <div class="editable" name="ed2">Nagoya</div>
+        <div class="editable" name="ed3">Fukuoka</div>
+        <button id="submitbutton" type="button" name="submit">Submit</button>
+    </body>
+</html>
