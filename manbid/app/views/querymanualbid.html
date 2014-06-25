@@ -1,0 +1,51 @@
+<div class="panel panel-default">
+  <div class="panel-heading">Manual Bid List</div>
+  <div class="panel-body">
+   <a href="#/putManualBid"><button type="button" class="btn btn-default btn-md glyphicon glyphicon-plus"></button></a>
+  </div>
+
+  <table class="table">
+    <thead>
+      <th><a href="javascript:void(0);" ng-click="criteria={}">all</a></th>
+      <th><input type="text" size="4" ng-model="criteria.sspId" class="form-control" placeholder="ssp id"></th>
+      <th>
+        <select ng-model="criteria.mediaType">
+          <option value="">-</option>
+          <option value="APP">APP</option>
+          <option value="SITE">SITE</option>
+        </select>
+      </th>
+      <th><input type="text" size="8" ng-model="criteria.mediaId" class="form-control" placeholder="media id"></th>
+      <th><input type="text" ng-model="criteria.campaignId" class="form-control" placeholder="campaign id"></th>
+      <th></th>
+      <th>
+        <select ng-model="criteria.isManualBid">
+          <option value="">-</option>
+          <option value="true">manual</option>
+          <option value="false">auto</option>
+        </select>
+      </th>
+    </thead>
+    <thead style="background-color: #ddd">
+      <th>edit</th>
+      <th>ssp</th>
+      <th>media type</th>
+      <th>media id</th>
+      <th>campaign id</th>
+      <th>cpm</th>
+      <th>isManualBid</th>
+    </thead>
+    <tbody>
+      <tr ng-repeat="bid in manualBids | filter:criteria">
+        <td><a href="#/putManualBid/{{bid.sspId}};{{bid.mediaType}};{{bid.mediaId}};{{bid.campaignId}}"><button type="button" class="btn btn-default btn-sm glyphicon glyphicon-pencil"></button></a></td>
+        <td>{{bid.sspId | ssp}}</td>
+        <td>{{bid.mediaType}}</td>
+        <td>{{bid.mediaId}}</td>
+        <td>{{bid.campaignId}}</td>
+        <td>{{bid.cpm | number}}</td>
+        <td><span ng-class="bid.isManualBid && 'glyphicon glyphicon-ok'"></span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<a href="#/putManualBid"><button type="button" class="btn btn-default btn-lg glyphicon glyphicon-plus"></button></a>

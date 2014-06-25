@@ -1,0 +1,59 @@
+<h2>Update Manual Bid</h2>
+	
+<form name="updateManualBidForm" class="form-horizontal" role="form">
+  <div class="form-group">
+    <label for="selectSsp" class="col-sm-2 control-label">SSP</label>
+    <div class="col-sm-10">
+	<select id="selectSsp" class="form-control" ng-model="bid.sspId" ng-options="s.id as s.name+'('+s.id+')' for s in Enums.ssps" required>
+		<option value="">----</option>
+	</select>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="inputMediaType" class="col-sm-2 control-label">Media Type</label>
+    <div class="col-sm-10">
+	<label>
+	<input type="radio" name="mediaType" id="optionMediaTypeApp" value="APP" ng-model="bid.mediaType">
+	App
+	</label>
+	<label>
+	<input type="radio" name="mediaType" id="optionMediaTypeApp" value="SITE" ng-model="bid.mediaType">
+	Site
+	</label>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="inputMediaId" class="col-sm-2 control-label">Media ID</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" id="inputMediaId" ng-model="bid.mediaId" required>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="inputCampaignId" class="col-sm-2 control-label">Campaign ID</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" id="inputCampaignId" ng-model="bid.campaignId" required>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="inputCpm" class="col-sm-2 control-label">CPM</label>
+    <div class="col-sm-10">
+      <input type="number" class="form-control" id="inputCpm" step="0.1" ng-model="bid.cpm" required>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="chkIsManualBid" class="col-sm-2 control-label">is manual bid</label>
+    <div class="col-sm-10">
+      <input type="checkbox" class="form-control" id="chkIsManualBid" ng-model="bid.isManualBid">
+    </div>
+  </div>
+  <div class="form-group">
+    <div class="col-sm-offset-2 col-sm-10">
+      <button type="submit" class="btn btn-lg btn-default" ng-click="submit()">Update</button><br>
+      <alert ng-repeat="alert in alerts" type="alert.type" close="closeAlert($index)">{{alert.msg}}</alert>
+    </div>
+  </div>
+</form>
+
+
+
+
