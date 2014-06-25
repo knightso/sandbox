@@ -9,9 +9,13 @@
 		  'advlist autolink lists link image charmap print preview anchor',
 		  'searchreplace visualblocks code fullscreen',
 		  'insertdatetime media table contextmenu paste catimgmanager',
-		  'textcolor colorpicker'
+		  'textcolor colorpicker',
+		  'template'
 		],
 		toolbar: 'undo redo | styleselect | bold italic forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image catimgmanager',
+		templates: [
+			{title: 'Form', description: 'File form', url: '/static/tmpl/fileform.html'}
+		],
 		setup: function(editor) {
 			// 編集したエディタを捕捉する。
 			editor.on('blur', function(e) {
