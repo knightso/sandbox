@@ -13,13 +13,17 @@
 		  'template'
 		],
 		toolbar: 'undo redo | styleselect | bold italic forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image catimgmanager',
+		/* // テンプレートの直接定義。
 		templates: [
+			{title: 'Greeting', description: 'Greeting message', content: 'Hello world!!'},
 			{title: 'Form', description: 'File form', url: '/static/tmpl/fileform.html'}
 		],
+		*/
+		// テンプレートの定義をサーバーから取得する。
+		templates: '/tinymce/templatelist',
 		setup: function(editor) {
 			// 編集したエディタを捕捉する。
 			editor.on('blur', function(e) {
-				console.log('blur');
 				if(editor.id in editedIDs) {
 					return;
 				}
