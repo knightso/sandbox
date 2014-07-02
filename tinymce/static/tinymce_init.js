@@ -61,6 +61,11 @@
 				data.contents[id] = editor.getContent();	// 今はエディタのIDだが、後々編集ブロック毎のIDにします。
 			}
 
+			console.log('Schema:');
+			console.log(tinymce.activeEditor.schema);
+
+			console.log(data);
+
 			tinymce.util.XHR.send({
 				url: '/update/block',
 				method: 'POST',
