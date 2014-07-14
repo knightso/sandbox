@@ -17,12 +17,8 @@ const (
 
 func init() {
 	// スキーマの設定。
-	var definition = make(map[string]string)
-	definition["table_a"] = "kind:string,date:timestamp,count:integer"
-	definition["table_b"] = "kind:string,date:timestamp,count:integer"
-
-	service := &SchemaService{}
-	service.Init(definition)
+	AddSchema("table_a", "kind:string,date:timestamp,count:integer")
+	AddSchema("table_b", "kind:string,date:timestamp,count:integer")
 
 	http.HandleFunc("/schema_check", SchemaCheckHandler)
 	//http.HandleFunc("/put_log", PutLogHandler)
@@ -41,7 +37,6 @@ func SchemaCheckHandler(rw http.ResponseWriter, req *http.Request) {
 
 /*
 func PutLogHandler(rw http.ResponseWriter, req *http.Request) {
-	// logをtaskqueueに入れる。
 	c := appengine.NewContext(req)
 	service := &LogService{Context: c}
 	err := service.Put(queueName, tag, record)

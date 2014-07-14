@@ -8,21 +8,10 @@ import (
 // map[テーブル名]map[列の名前]列の種類
 var schemata = make(map[string]map[string]string)
 
-type SchemaService struct{}
-
-func (s *SchemaService) Init(definition map[string]string) {
-	for table, schema := range definition {
-		err := s.AddSchema(table, schema)
-		if err != nil {
-			panic(fmt.Errorf("%s", err.Error()))
-		}
-	}
-}
-
 // schemaを登録します。
-func (s *SchemaService) AddSchema(table, schema string) (err error) {
+func AddSchema(table, schema string) {
 	if _, ok := schemata[table]; ok {
-		return fmt.Errorf("%s table that already exists.", table)
+		panic(fmt.Errorf("table[%s] that already exists.", table))
 	}
 
 	// コンマでschemaを分割します。["kind:string", "date:timestamp", "count:integer"]
@@ -37,10 +26,13 @@ func (s *SchemaService) AddSchema(table, schema string) (err error) {
 			return strings.ContainsRune(":", r)
 		})
 
-		// ここでcolumn名、type名が正しいか確認する。
-		err := confirmNameAndType(nameAndType)
-		if err != nil {
-			return err
+		// column名、type名のいずれかが欠けているか。
+		if err := confirmFormat(nameAndType); err != nil {
+			panic(fmt.Errorf("%s\nYour input schema: %s", err.Error(), schema))
+		}
+		// 許可されたtypeか確認します。
+		if err := confirmType(nameAndType); err != nil {
+			panic(fmt.Errorf("%s", err.Error()))
 		}
 
 		schemaMap[nameAndType[0]] = strings.ToUpper(nameAndType[1])
@@ -48,27 +40,18 @@ func (s *SchemaService) AddSchema(table, schema string) (err error) {
 
 	schemata[table] = make(map[string]string)
 	schemata[table] = schemaMap
-	return nil
 }
 
-func confirmNameAndType(nameAndType []string) (err error) {
+func confirmFormat(nameAndType []string) (err error) {
 	if len(nameAndType) != 2 {
 		return fmt.Errorf("Format of the schema is invalid. ex. \"column1_name:data_type,column2_name:data_type,...\"")
 	}
+	return nil
+}
 
-	name := nameAndType[0]
-	typeName := nameAndType[1]
-
-	// 列と種類が空か否か確認します。
-	if len(name) == 0 {
-		return fmt.Errorf("Column is empty.")
-	}
-	if len(typeName) == 0 {
-		return fmt.Errorf("Type is empty.")
-	}
-
+func confirmType(nameAndType []string) (err error) {
 	// 許可されたtypeか否か確認します。
-	switch strings.ToUpper(typeName) {
+	switch strings.ToUpper(nameAndType[1]) {
 	case "STRING":
 	case "INTEGER":
 	case "FLOAT":
@@ -76,12 +59,13 @@ func confirmNameAndType(nameAndType []string) (err error) {
 	case "TIMESTAMP":
 	case "RECORD":
 	default:
-		return fmt.Errorf("Invalid Type: %s\nValid type: STRING, INTEGER, FLOAT, BOOLEAN, TIMESTAMP, RECORD", typeName)
+		return fmt.Errorf("Invalid Type: %s\nValid type: STRING, INTEGER, FLOAT, BOOLEAN, TIMESTAMP, RECORD", nameAndType[1])
 	}
-
 	return nil
 }
 
+/*
 func (s *SchemaService) GetSchema(key string) string {
 	return ""
 }
+*/
