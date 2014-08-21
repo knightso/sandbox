@@ -36,6 +36,8 @@ var MockGenerator = yeoman.generators.Base.extend({
     var done = this.async();
     var self = this;
     ssutil.readToken(function(err, data) {
+      console.log('token err=' + err);
+      console.log('token data=' + data);
       if(err) {
         console.log('Visit the URL: ', client.generateAuthUrl());
         var prompts = [{
@@ -83,7 +85,7 @@ var MockGenerator = yeoman.generators.Base.extend({
 
     var flow = new cellflow(client);
     ev.once('return_data', function(data) {
-      self.write('spreadsheets/'+data.title+'.json', JSON.stringify(data));
+      self.write(data.title+'.json', JSON.stringify(data, undefined, 2));
       done();
     });
 

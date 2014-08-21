@@ -5,7 +5,7 @@ var path = require('path');
 var spreadsheetError = require('./error.js');
 var error = new spreadsheetError();
 
-var TOKENS_FILEPATH = path.join(__dirname, 'tokens.json');
+var TOKENS_FILEPATH = './tokens.json';
 
 function Util() {}
 
@@ -56,22 +56,22 @@ Util.prototype.typeConversion = function(type, cellContent) {
       case 'string':
         convertedContent = cellContent;
         break;
-      case 'int':
+      case 'number':
         if(isNaN(cellContent)) {
-          throw new error.CellContentTypeException('int型に変換出来ない値です。', cellContent);;
+          throw new error.CellContentTypeException('number型に変換出来ない値です。', cellContent);;
         }else {
-          convertedContent = parseInt(cellContent);
-        }
-        break;
-      case 'float':
-        if(isNaN(cellContent)) {
-          throw new error.CellContentTypeException('float型に変換出来ない値です。', cellContent);;
-        }else {
-          convertedContent = parseFloat(cellContent);
+          convertedContent = Number(cellContent);
         }
         break;
       case 'date':
-        convertedContent = TransformDateFormat(cellContent);
+        convertedContent = transformDateFormat(cellContent);
+        break;
+      case 'json':
+        convertedContent = JSON.parse(cellContent);
+        break;
+      case 'eval':
+        // TODO: eval later.
+        convertedContent = eval(cellContent);
         break;
       case null:
         convertedContent = cellContent;
@@ -85,7 +85,7 @@ Util.prototype.typeConversion = function(type, cellContent) {
   return convertedContent;
 };
 
-function TransformDateFormat(cellContent) {
+function transformDateFormat(cellContent) {
 	// spreadsheet apiでは、有効な日付書式ならばyyyy/MM/dd HHmmssで取得する。
 	// 有効な場合、セルをクリックするとカレンダーが表示される。
 	var longDatePattern = /^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{1,2}):(\d{2}):(\d{2})/;

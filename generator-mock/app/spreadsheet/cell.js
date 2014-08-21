@@ -17,29 +17,31 @@ Cell.prototype.getA1NotationPosition = function(title) {
 };
 
 Cell.prototype.getColumnsType = function(content) {
-	var pattern = /^type=(string|int|float|date)$/i;
-	var patternPk = /^(pk)\ntype=(string|int|float|date)$/;
+	var pkPattern = /^pk\s*$/i;
+	var typePattern = /^type=(\w+)\s*$/i;
+	
 	var result = {
-		'primary': false,
-		'type': null
+		primary: false,
+		type: 'string'
 	};
 
-	var matched = content.match(pattern);
-	if(matched != null) {
-		result.type = matched[1];
-	}else {
-		matched = content.match(patternPk);
-		if(matched != null) {
-			result.primary = true;
-			result.type = matched[2];
-		}else {
-			// TODO: 予期せぬ型情報としてエラー。
-			console.log('content=[' + content + ']');
-			throw new error.CellContentTypeException('有効な型ではありません。string, int, float, dateのいずれかにして下さい。', content);
+	var lines = content.split('\n');
+
+	for (var i = 0; i < lines.length; i++) {
+		if (lines[i].match(pkPattern) != null) {
+			result.primary = true
+		}
+		var matchedType = lines[i].match(typePattern);
+		if (matchedType != null) {
+			var type = matchedType[1];
+			if (['string', 'number', 'date', 'json', 'eval'].indexOf(type) < 0) {
+				console.log('content=[' + content + ']');
+				throw new error.CellContentTypeException('有効な型ではありません。string, number, date, json, evalのいずれかにして下さい。', content);
+			}
+			result.type = type.toLowerCase();
 		}
 	}
 
-	result.type = result.type.toLowerCase();
 	return result;
 };
 
