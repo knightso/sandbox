@@ -85,7 +85,18 @@ var MockGenerator = yeoman.generators.Base.extend({
 
     var flow = new cellflow(client);
     ev.once('return_data', function(data) {
-      self.write(data.title+'.json', JSON.stringify(data, undefined, 2));
+      self.write(data.title+'.json', JSON.stringify(data, function(key, value) {
+        if (value instanceof Object === false || Object.getPrototypeOf(value) !== Object.prototype) {
+          return value;
+        }
+        var keys = Object.keys(value);
+        keys.sort();
+        var newValue = {};
+        keys.forEach(function(key) {
+          newValue[key] = value[key];
+        });
+        return newValue;
+      }, 2));
       done();
     });
 

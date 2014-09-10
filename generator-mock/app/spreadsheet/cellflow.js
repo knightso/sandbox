@@ -50,7 +50,7 @@ CellFlow.prototype.worksheet = function(body, ev) {
 };
 
 CellFlow.prototype.cell = function(body) {
-	var worksheet = {'records': [], 'primary_key': []};
+	var worksheet = {'records': [], 'pk': []};
   var attr = {};
   var type = {};
 
@@ -68,7 +68,7 @@ CellFlow.prototype.cell = function(body) {
       // 列の型を記録し、Primary Key列であれば別途記録する。
       var columnsType = cell.getColumnsType(content);
       if(columnsType.primary) {
-        worksheet['primary_key'].push(attr[position.column]);
+        worksheet['pk'].push(attr[position.column]);
       }
       type[position.column] = columnsType.type;
     }
