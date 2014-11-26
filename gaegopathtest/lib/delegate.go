@@ -2,13 +2,10 @@
 package lib
 
 import "syscall"
+import "fmt"
 
 func init() {
 	delegate = func() string {
-		wd, err := syscall.Getwd()
-		if err != nil {
-			return err.Error()
-		}
-		return "Hello! wd:" + wd
+		return fmt.Sprintf("Hello! pid:", syscall.Getpid())
 	}
 }
