@@ -1,6 +1,10 @@
-// +build appengine
 package lib
 
+var delegate func() string
+
 func Hello() string {
-	return "Hello!"
+	if delegate == nil {
+		return ""
+	}
+	return delegate()
 }
