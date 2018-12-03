@@ -25,6 +25,7 @@ const (
 type Book struct {
 	Title         string
 	TitleIndex    []string
+	TitlePrefix   []string
 	Price         int
 	PriceRange    string
 	Category      string
@@ -70,6 +71,7 @@ func putTestBooks(w http.ResponseWriter, r *http.Request) {
 
 		// Book保存時に派生プロパティを補完
 		book.TitleIndex = biunigrams(book.Title)
+		book.TitlePrefix = prefixes(book.Title)
 		book.IsPublished = book.Status == BookStatusPublished
 		book.IsHobby = book.Category == "sports" || book.Category == "cooking"
 
@@ -216,6 +218,28 @@ func gaeLike(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func gaePrefix(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+
+	title := r.FormValue("title")
+
+	var books []Book
+	_, err := datastore.NewQuery("Book").Filter("TitlePrefix =", strings.ToLower(title)).GetAll(ctx, &books)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(books); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func bigrams(s string) []string {
 	tokens := make([]string, 0, 32)
 
@@ -239,4 +263,31 @@ func biunigrams(s string) []string {
 
 	return tokens
 
+}
+
+func prefixes(s string) []string {
+	prefixes := make(map[string]struct{})
+
+	runes := make([]rune, 0, 64)
+
+	for _, w := range strings.Split(strings.ToLower(s), " ") {
+		if w == "" {
+			continue
+		}
+
+		runes = runes[0:0]
+
+		for _, c := range w {
+			runes = append(runes, c)
+			prefixes[string(runes)] = struct{}{}
+		}
+	}
+
+	tokens := make([]string, 0, 32)
+
+	for pref := range prefixes {
+		tokens = append(tokens, pref)
+	}
+
+	return tokens
 }

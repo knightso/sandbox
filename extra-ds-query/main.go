@@ -29,6 +29,7 @@ func main() {
 	http.HandleFunc("/gaestore/in2", gaeIn2)
 	http.HandleFunc("/gaestore/num-range", gaeNumRange)
 	http.HandleFunc("/gaestore/like", gaeLike)
+	http.HandleFunc("/gaestore/prefix", gaePrefix)
 
 	// put testdata
 	http.HandleFunc("/put-testbooks", putTestBooks)
