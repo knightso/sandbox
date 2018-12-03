@@ -31,8 +31,17 @@ func main() {
 	http.HandleFunc("/gaestore/like", gaeLike)
 	http.HandleFunc("/gaestore/prefix", gaePrefix)
 
+	// gcd_datastore.go
+	http.HandleFunc("/gcdstore/not-equal", gcdNotEqual)
+	http.HandleFunc("/gcdstore/in", gcdIn)
+	http.HandleFunc("/gcdstore/in2", gcdIn2)
+	http.HandleFunc("/gcdstore/num-range", gcdNumRange)
+	http.HandleFunc("/gcdstore/like", gcdLike)
+	http.HandleFunc("/gcdstore/prefix", gcdPrefix)
+
 	// put testdata
 	http.HandleFunc("/put-testbooks", putTestBooks)
+	http.HandleFunc("/put-testgcdbooks", putTestGCDBooks)
 
 	appengine.Main()
 }
