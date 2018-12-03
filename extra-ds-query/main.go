@@ -41,7 +41,7 @@ func main() {
 
 	// put testdata
 	http.HandleFunc("/put-testbooks", putTestBooks)
-	http.HandleFunc("/put-testgcdbooks", putTestGCDBooks)
+	http.HandleFunc("/put-testgcdbooks", putTestGCDBooks) // ローカル実行用
 
 	appengine.Main()
 }

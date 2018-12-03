@@ -13,45 +13,6 @@ import (
 
 var projectID = os.Getenv("GOOGLE_CLOUD_PROJECT")
 
-// GCDBookStatus describles status of Book
-type GCDBookStatus int
-
-// GCDBookStatus contants
-const (
-	GCDBookStatusUnpublished GCDBookStatus = 1 << iota
-	GCDBookStatusPublished
-	GCDBookStatusDiscontinued
-)
-
-// GCDBook is sample model.
-type GCDBook struct {
-	Title         string
-	TitleIndex    []string
-	TitlePrefix   []string
-	Price         int
-	PriceRange    string
-	Category      string
-	Status        GCDBookStatus
-	StatusORIndex []int
-	IsPublished   bool
-	IsHobby       bool
-}
-
-// GCDBookStatuses is the list of all GCDBookStatuses
-var GCDBookStatuses = []GCDBookStatus{
-	GCDBookStatusUnpublished,
-	GCDBookStatusPublished,
-	GCDBookStatusDiscontinued,
-}
-
-// GCDBookCategories is the list of all Book categories
-var GCDBookCategories = []string{
-	"sports",
-	"cooking",
-	"education",
-	"cartoons",
-}
-
 func putTestGCDBooks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	client, err := datastore.NewClient(ctx, projectID)
@@ -64,26 +25,26 @@ func putTestGCDBooks(w http.ResponseWriter, r *http.Request) {
 	titles := []string{"aPPle", "piNEApple", "banANA", "foobar", "hogefugapiyo"}
 
 	keys := make([]*datastore.Key, 0, 100)
-	books := make([]*GCDBook, 0, 100)
+	books := make([]*Book, 0, 100)
 
 	for i := 0; i < 100; i++ {
 		bookID := fmt.Sprintf("book%04d", i)
-		key := datastore.NameKey("GCDBook", bookID, nil)
+		key := datastore.NameKey("Book", bookID, nil)
 
-		book := &GCDBook{
+		book := &Book{
 			Title:    titles[i%len(titles)],
 			Price:    i * 100,
-			Status:   GCDBookStatuses[i%len(GCDBookStatuses)],
-			Category: GCDBookCategories[i%len(GCDBookCategories)],
+			Status:   BookStatuses[i%len(BookStatuses)],
+			Category: BookCategories[i%len(BookCategories)],
 		}
 
 		// Book保存時に派生プロパティを補完
-		book.TitleIndex = gcdBiunigrams(book.Title)
+		book.TitleIndex = biunigrams(book.Title)
 		book.TitlePrefix = prefixes(book.Title)
-		book.IsPublished = book.Status == GCDBookStatusPublished
+		book.IsPublished = book.Status == BookStatusPublished
 		book.IsHobby = book.Category == "sports" || book.Category == "cooking"
 
-		for j := 1; j < 1<<uint(len(GCDBookStatuses))+1; j++ {
+		for j := 1; j < 1<<uint(len(BookStatuses))+1; j++ {
 			if j&int(book.Status) != 0 {
 				book.StatusORIndex = append(book.StatusORIndex, j)
 			}
@@ -121,8 +82,8 @@ func gcdNotEqual(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var books []GCDBook
-	q := datastore.NewQuery("GCDBook").Filter("IsPublished =", false)
+	var books []Book
+	q := datastore.NewQuery("Book").Filter("IsPublished =", false)
 	_, err = client.GetAll(ctx, q, &books)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -148,8 +109,8 @@ func gcdIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var books []GCDBook
-	q := datastore.NewQuery("GCDBook").Filter("IsHobby =", true)
+	var books []Book
+	q := datastore.NewQuery("Book").Filter("IsHobby =", true)
 	_, err = client.GetAll(ctx, q, &books)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -175,8 +136,8 @@ func gcdIn2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var books []GCDBook
-	q := datastore.NewQuery("GCDBook").Filter("StatusORIndex =", int(GCDBookStatusUnpublished|GCDBookStatusPublished))
+	var books []Book
+	q := datastore.NewQuery("Book").Filter("StatusORIndex =", int(BookStatusUnpublished|BookStatusPublished))
 	_, err = client.GetAll(ctx, q, &books)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -202,8 +163,8 @@ func gcdNumRange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var books []GCDBook
-	q := datastore.NewQuery("GCDBook").Filter("PriceRange =", "5000<=p<10000")
+	var books []Book
+	q := datastore.NewQuery("Book").Filter("PriceRange =", "5000<=p<10000")
 	_, err = client.GetAll(ctx, q, &books)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -231,19 +192,19 @@ func gcdLike(w http.ResponseWriter, r *http.Request) {
 
 	title := r.FormValue("title")
 
-	q := datastore.NewQuery("GCDBook")
+	q := datastore.NewQuery("Book")
 
 	if runeLen := utf8.RuneCountInString(title); runeLen == 1 {
 		// パラメータが1文字の場合はunigramで検索
 		q = q.Filter("TitleIndex =", title)
 	} else if runeLen > 1 {
 		// パラメータが2文字以上の場合はbigramで検索
-		for _, gram := range gcdBigrams(title) {
+		for _, gram := range bigrams(title) {
 			q = q.Filter("TitleIndex =", gram)
 		}
 	}
 
-	var books []GCDBook
+	var books []Book
 	_, err = client.GetAll(ctx, q, &books)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -271,7 +232,7 @@ func gcdPrefix(w http.ResponseWriter, r *http.Request) {
 
 	title := r.FormValue("title")
 	var books []Book
-	q := datastore.NewQuery("GCDBook").Filter("TitlePrefix =", strings.ToLower(title))
+	q := datastore.NewQuery("Book").Filter("TitlePrefix =", strings.ToLower(title))
 	_, err = client.GetAll(ctx, q, &books)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -284,49 +245,4 @@ func gcdPrefix(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-}
-
-func gcdBigrams(s string) []string {
-	tokens := make([]string, 0, 32)
-
-	for bigram := range toBigrams(strings.ToLower(s)) {
-		tokens = append(tokens, fmt.Sprintf("%c%c", bigram.a, bigram.b))
-	}
-
-	return tokens
-
-}
-
-func gcdBiunigrams(s string) []string {
-	tokens := make([]string, 0, 32)
-
-	for bigram := range toBigrams(strings.ToLower(s)) {
-		tokens = append(tokens, fmt.Sprintf("%c%c", bigram.a, bigram.b))
-	}
-	for unigram := range toUnigrams(strings.ToLower(s)) {
-		tokens = append(tokens, fmt.Sprintf("%c", unigram))
-	}
-
-	return tokens
-
-}
-
-func gcdPrefixes(s string) []string {
-	prefixes := make(map[string]struct{})
-	runes := make([]rune, 0, 64)
-	for _, w := range strings.Split(strings.ToLower(s), " ") {
-		if w == "" {
-			continue
-		}
-		runes = runes[0:0]
-		for _, c := range w {
-			runes = append(runes, c)
-			prefixes[string(runes)] = struct{}{}
-		}
-	}
-	tokens := make([]string, 0, 32)
-	for pref := range prefixes {
-		tokens = append(tokens, pref)
-	}
-	return tokens
 }
