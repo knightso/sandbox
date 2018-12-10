@@ -32,8 +32,8 @@ func saveBookIndexes(book *Book) {
 	idxs := xian.NewIndexes(bookIndexesConfig)
 	idxs.AddBiunigrams(BookQueryLabelTitleIndex, book.Title)
 	idxs.AddPrefixes(BookQueryLabelTitlePrefix, book.Title)
-	idxs.AddSomething(BookQueryLabelIsHobby, book.Title)
-	idxs.AddSomething(BookQueryLabelIsPublished, book.Category == "sports" || book.Category == "cooking")
+	idxs.AddSomething(BookQueryLabelIsPublished, book.Status == BookStatusPublished)
+	idxs.AddSomething(BookQueryLabelIsHobby, book.Category == "sports" || book.Category == "cooking")
 
 	for i := 1; i < 1<<uint(len(BookStatuses))+1; i++ {
 		if i&int(book.Status) != 0 {
