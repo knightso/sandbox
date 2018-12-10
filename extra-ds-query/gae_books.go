@@ -33,6 +33,7 @@ type Book struct {
 	StatusORIndex []int
 	IsPublished   bool
 	IsHobby       bool
+	Indexes       []string // for xian
 }
 
 // BookStatuses is the list of all BookStatuses
@@ -91,6 +92,8 @@ func putTestBooks(w http.ResponseWriter, r *http.Request) {
 		default:
 			book.PriceRange = "10000<=p"
 		}
+
+		saveBookIndexes(book)
 
 		keys = append(keys, key)
 		books = append(books, book)

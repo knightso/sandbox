@@ -31,6 +31,14 @@ func main() {
 	http.HandleFunc("/gaestore/like", gaeLike)
 	http.HandleFunc("/gaestore/prefix", gaePrefix)
 
+	// gae_xian_datastore.go
+	http.HandleFunc("/gaexian/not-equal", gaeNotEqual)
+	http.HandleFunc("/gaexian/in", gaeIn)
+	http.HandleFunc("/gaexian/in2", gaeIn2)
+	http.HandleFunc("/gaexian/num-range", gaeNumRange)
+	http.HandleFunc("/gaexian/like", gaeLike)
+	http.HandleFunc("/gaexian/prefix", gaePrefix)
+
 	// gcd_datastore.go
 	http.HandleFunc("/gcdstore/not-equal", gcdNotEqual)
 	http.HandleFunc("/gcdstore/in", gcdIn)
