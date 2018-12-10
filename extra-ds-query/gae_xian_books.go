@@ -10,7 +10,8 @@ import (
 )
 
 var bookIndexesConfig = xian.MustValidateConfig(&xian.Config{
-	IgnoreCase: true,
+	IgnoreCase:         true,
+	SaveNoFiltersIndex: true,
 })
 
 const (
@@ -28,7 +29,7 @@ const (
 	BookQueryLabelPriceRange = "pr"
 )
 
-func saveBookIndexes(book *Book) {
+func saveBookIndexes(book *Book) error {
 	idxs := xian.NewIndexes(bookIndexesConfig)
 	idxs.AddBiunigrams(BookQueryLabelTitleIndex, book.Title)
 	idxs.AddPrefixes(BookQueryLabelTitlePrefix, book.Title)
@@ -52,17 +53,31 @@ func saveBookIndexes(book *Book) {
 		idxs.Add(BookQueryLabelPriceRange, "10000<=p")
 	}
 
-	book.Indexes = idxs.MustBuild()
+	built, err := idxs.Build()
+	if err != nil {
+		return err
+	}
+
+	book.Indexes = built
+
+	return nil
 }
 
 func gaeXianNotEqual(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 
-	filters := xian.NewFilters(bookIndexesConfig).AddSomething(BookQueryLabelIsPublished, false)
-
 	q := datastore.NewQuery("Book")
 
-	for _, f := range filters.MustBuild() {
+	filters := xian.NewFilters(bookIndexesConfig)
+
+	filters.AddSomething(BookQueryLabelIsPublished, false)
+
+	built, err := filters.Build()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	for _, f := range built {
 		q = q.Filter("Indexes =", f)
 	}
 

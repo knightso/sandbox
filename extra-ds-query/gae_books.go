@@ -11,10 +11,10 @@ import (
 	"google.golang.org/appengine/datastore"
 )
 
-// BookStatus describles status of Book
+// BookStatus describes status of Book
 type BookStatus int
 
-// BookStatus contants
+// BookStatus constants
 const (
 	BookStatusUnpublished BookStatus = 1 << iota
 	BookStatusPublished
@@ -33,7 +33,7 @@ type Book struct {
 	StatusORIndex []int
 	IsPublished   bool
 	IsHobby       bool
-	Indexes       []string // for xian
+	Indexes       []string // for XIAN
 }
 
 // BookStatuses is the list of all BookStatuses
@@ -93,7 +93,9 @@ func putTestBooks(w http.ResponseWriter, r *http.Request) {
 			book.PriceRange = "10000<=p"
 		}
 
-		saveBookIndexes(book)
+		if err := saveBookIndexes(book); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 
 		keys = append(keys, key)
 		books = append(books, book)
