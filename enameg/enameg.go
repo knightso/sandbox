@@ -22,44 +22,61 @@ type constant struct {
 	Vals     []constantVal
 }
 
-// Generate generates Name functions by target.
-func Generate(target string) string {
-	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, target, nil, parser.ParseComments)
+// Generate returns packageName and generated functions by paths.
+func Generate(paths []string) (string, string) {
+	constMap, err := correctConstants(paths)
 	if err != nil {
-		log.Fatalf("error: %s", err.Error())
+		log.Fatal(err)
 	}
 
-	packageName := f.Name.Name
-	constMap := correctConstants(f)
-
+	var packageName string
 	var constants []constant
 
-	cmap := ast.NewCommentMap(fset, f, f.Comments)
-	for node, commentGroups := range cmap {
-		for _, cg := range commentGroups {
-			if hasAnnotation(cg) {
-				gen, ok := node.(*ast.GenDecl)
-				if !ok || len(gen.Specs) <= 0 {
-					continue
-				}
+	for _, path := range paths {
+		fset := token.NewFileSet()
+		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-				spec, ok := gen.Specs[0].(*ast.TypeSpec)
-				if !ok {
-					continue
-				}
+		if packageName == "" {
+			packageName = f.Name.Name
+		}
+		if packageName != f.Name.Name {
+			log.Fatal("error: multiple packages")
+		}
 
-				c := newConst(spec.Name.Name, constMap)
-				constants = append(constants, c)
+		cmap := ast.NewCommentMap(fset, f, f.Comments)
+
+		for node, commentGroups := range cmap {
+			for _, cg := range commentGroups {
+				if hasAnnotation(cg) {
+					gen, ok := node.(*ast.GenDecl)
+					if !ok || len(gen.Specs) <= 0 {
+						continue
+					}
+
+					spec, ok := gen.Specs[0].(*ast.TypeSpec)
+					if !ok {
+						continue
+					}
+
+					c := newConst(spec.Name.Name, constMap)
+					constants = append(constants, c)
+				}
 			}
 		}
 	}
 
 	if len(constants) == 0 {
-		return ""
+		return packageName, ""
 	}
 
-	return constructNameFunc(packageName, constants)
+	generated, err := generateNameFunc(packageName, constants)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return packageName, generated
 }
 
 func hasAnnotation(cg *ast.CommentGroup) bool {
@@ -73,9 +90,23 @@ func hasAnnotation(cg *ast.CommentGroup) bool {
 	return false
 }
 
-func correctConstants(f *ast.File) map[string][]*ast.ValueSpec {
+func correctConstants(paths []string) (map[string][]*ast.ValueSpec, error) {
 	constMap := make(map[string][]*ast.ValueSpec)
 
+	for _, path := range paths {
+		fset := token.NewFileSet()
+		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+		if err != nil {
+			return nil, err
+		}
+
+		constMap = correctConstantsInFile(constMap, f)
+	}
+
+	return constMap, nil
+}
+
+func correctConstantsInFile(constMap map[string][]*ast.ValueSpec, f *ast.File) map[string][]*ast.ValueSpec {
 	for _, dec := range f.Decls {
 		gen, ok := dec.(*ast.GenDecl)
 		if !ok {
@@ -138,7 +169,7 @@ func newConst(typeName string, constMap map[string][]*ast.ValueSpec) constant {
 	}
 }
 
-func constructNameFunc(packageName string, consts []constant) string {
+func generateNameFunc(packageName string, consts []constant) (string, error) {
 	g := generator.NewRoot(
 		generator.NewPackage(packageName),
 		generator.NewNewline(),
@@ -166,8 +197,8 @@ func constructNameFunc(packageName string, consts []constant) string {
 
 	generated, err := g.Gofmt("-s").Goimports().Generate(0)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
-	return generated
+	return generated, nil
 }
