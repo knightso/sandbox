@@ -1,0 +1,6 @@
+queue:
+- name: create-test-data
+  rate: 500/s
+
+- name: query-queue
+  rate: 1/s

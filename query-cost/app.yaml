@@ -1,0 +1,8 @@
+instance_class: F4
+runtime: go111
+automatic_scaling:
+  max_concurrent_requests: 80
+
+handlers:
+- url: /.*
+  script: auto
