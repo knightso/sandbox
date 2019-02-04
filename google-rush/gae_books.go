@@ -1,21 +1,29 @@
 package main
 
 import (
+	"context"
 	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
+	"github.com/knightso/base/errors"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
+	aelog "google.golang.org/appengine/log"
 	"google.golang.org/appengine/taskqueue"
 )
+
+func init() {
+	errors.ShowStackTraceOnError = true
+}
 
 // BookStatus describes status of Book
 type BookStatus int
@@ -43,6 +51,28 @@ type Book struct {
 	Indexes       []string // for XIAN
 	Shard256      string   // 分散処理用shard番号(256分割)
 	Shard16       string   // 分散処理用shard番号(16分割)
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+// Book2 is sample model.
+type Book2 struct {
+	Number        int        `datastore:",noindex"`
+	Title         string     `datastore:",noindex"`
+	TitleIndex    []string   `datastore:",noindex"`
+	TitlePrefix   []string   `datastore:",noindex"`
+	Price         int        `datastore:",noindex"`
+	PriceRange    string     `datastore:",noindex"`
+	Category      string     `datastore:",noindex"`
+	Status        BookStatus `datastore:",noindex"`
+	StatusORIndex []int      `datastore:",noindex"`
+	IsPublished   bool       `datastore:",noindex"`
+	IsHobby       bool       `datastore:",noindex"`
+	Indexes       []string   `datastore:",noindex"` // for XIAN
+	Shard256      string     `datastore:",noindex"` // 分散処理用shard番号(256分割)
+	Shard16       string     `datastore:",noindex"` // 分散処理用shard番号(16分割)
+	CreatedAt     time.Time  `datastore:",noindex"`
+	UpdatedAt     time.Time  `datastore:",noindex"`
 }
 
 // BookStatuses is the list of all BookStatuses
@@ -61,77 +91,103 @@ var BookCategories = []string{
 }
 
 func addHashPrefix(s string) string {
-	h := md5.New()
-	io.WriteString(h, s)
-	return fmt.Sprintf("%x-%s", h.Sum(nil)[:3], s)
+	m := md5.New()
+	io.WriteString(m, s)
+	h := hex.EncodeToString(m.Sum(nil))
+	return fmt.Sprintf("%s-%s", h[:3], s)
 }
 
-func call(r *http.Request, start, count int) error {
+func call(c context.Context, start, count int) error {
 	task := taskqueue.NewPOSTTask("/put-testbooks/create-data", url.Values{
 		"start": {strconv.Itoa(start)},
 		"count": {strconv.Itoa(count)},
 	})
 
-	ctx := appengine.NewContext(r)
-	_, err := taskqueue.Add(ctx, task, "create-test-data")
+	_, err := taskqueue.Add(c, task, "create-test-data")
 
 	return err
 }
 
 func putTestBooksTask(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+
 	start, err := strconv.Atoi(r.FormValue("start"))
 	if err != nil {
-		log.Printf("invalid start: %v", err.Error())
+		msg := fmt.Sprintf("invalid start: %v", err.Error())
+		putlogf(ctx, true, msg)
+		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 
 	count, err := strconv.Atoi(r.FormValue("count"))
 	if err != nil {
-		log.Printf("invalid count: %v", err.Error())
+		msg := fmt.Sprintf("invalid count: %v", err.Error())
+		putlogf(ctx, true, msg)
+		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 
 	end, err := strconv.Atoi(r.FormValue("end"))
 	if err != nil {
-		log.Printf("invalid end: %v", err.Error())
+		msg := fmt.Sprintf("invalid end: %v", err.Error())
+		putlogf(ctx, true, msg)
+		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 
-	for i := start; i < end; i += count {
-		if err = call(r, i, count); err != nil {
-			log.Printf("error: %s", err.Error())
+	for i := start; i <= end; i += count {
+		count := count
+		if i+count > end {
+			count = end - i + 1
+		}
+		if err = call(ctx, i, count); err != nil {
+			putlogf(ctx, true, "error: %s", err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
+
 	w.WriteHeader(http.StatusOK)
+	putlogf(ctx, false, "done")
+	fmt.Fprintf(w, "done")
 }
 
 func putTestBooks(w http.ResponseWriter, r *http.Request) {
+
+	ctx := appengine.NewContext(r)
+
+	putlogf(ctx, false, "putTestBooks")
+
 	start, err := strconv.Atoi(r.FormValue("start"))
 	if err != nil {
-		log.Printf("invalid start: %v", err.Error())
+		msg := fmt.Sprintf("invalid start: %v", err.Error())
+		putlogf(ctx, true, msg)
+		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 
 	count, err := strconv.Atoi(r.FormValue("count"))
 	if err != nil {
-		log.Printf("invalid count: %v", err.Error())
+		msg := fmt.Sprintf("invalid count: %v", err.Error())
+		putlogf(ctx, true, msg)
+		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 
-	ctx := appengine.NewContext(r)
+	putlogf(ctx, false, "start=%d, count=%d", start, count)
 
-	keys := make([]*datastore.Key, 0, count)
-	books := make([]*Book, 0, count)
+	batchSize := 500
+
+	keys := make([]*datastore.Key, 0, batchSize)
+	books := make([]*Book2, 0, batchSize)
 
 	titles := []string{"aPPle", "piNEApple", "banANA", "foobar", "hogefugapiyo"}
 
 	for i := start; i < start+count; i++ {
 		bookID := addHashPrefix(fmt.Sprintf("%d", i))
-		key := datastore.NewKey(ctx, "Book", bookID, 0, nil)
+		key := datastore.NewKey(ctx, "Book2", bookID, 0, nil)
 
-		book := &Book{
+		book := &Book2{
 			Number:   i,
 			Title:    titles[i%len(titles)],
 			Price:    i * 100,
@@ -164,6 +220,7 @@ func putTestBooks(w http.ResponseWriter, r *http.Request) {
 
 		if err := saveBookIndexes(book); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		// shard番号設定
@@ -172,17 +229,50 @@ func putTestBooks(w http.ResponseWriter, r *http.Request) {
 			book.Shard16 = bookID[:1]
 		}
 
+		now := time.Now()
+		book.CreatedAt = now
+		book.UpdatedAt = now
+
 		keys = append(keys, key)
 		books = append(books, book)
+
+		if len(keys) == batchSize {
+			if err := func() error {
+				ctx, cancel := context.WithTimeout(ctx, 50*time.Second)
+				defer cancel()
+
+				if _, err := datastore.PutMulti(ctx, keys, books); err != nil {
+					return errors.WrapOr(err)
+				}
+				keys = keys[0:0]
+				books = books[0:0]
+				return nil
+			}(); err != nil {
+				putlogf(ctx, true, "error: %s", err.Error())
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
 	}
 
-	if _, err := datastore.PutMulti(ctx, keys, books); err != nil {
-		log.Printf("error: %s", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if len(keys) > 0 {
+		if err := func() error {
+			ctx, cancel := context.WithTimeout(ctx, 50*time.Second)
+			defer cancel()
+			if _, err := datastore.PutMulti(ctx, keys, books); err != nil {
+				return errors.WrapOr(err)
+			}
+			return nil
+		}(); err != nil {
+			putlogf(ctx, true, "error: %s", err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
+	putlogf(ctx, false, "done")
+	fmt.Fprintf(w, "done")
 }
 
 func gaeNotEqual(w http.ResponseWriter, r *http.Request) {
@@ -371,4 +461,14 @@ func prefixes(s string) []string {
 	}
 
 	return tokens
+}
+
+func putlogf(c context.Context, iserr bool, msg string, args ...interface{}) {
+	l := fmt.Sprintf(msg, args...)
+	// log.Println(l)
+	if iserr {
+		aelog.Errorf(c, l)
+	} else {
+		aelog.Infof(c, l)
+	}
 }

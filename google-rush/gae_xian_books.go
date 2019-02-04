@@ -29,7 +29,7 @@ const (
 	BookQueryLabelPriceRange = "pr"
 )
 
-func saveBookIndexes(book *Book) error {
+func saveBookIndexes(book *Book2) error {
 	idxs := xian.NewIndexes(bookIndexesConfig)
 	idxs.AddBiunigrams(BookQueryLabelTitleIndex, book.Title)
 	idxs.AddPrefixes(BookQueryLabelTitlePrefix, book.Title)
