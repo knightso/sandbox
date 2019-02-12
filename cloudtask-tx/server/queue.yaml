@@ -1,0 +1,3 @@
+queue:
+- name: put-data
+  rate: 1/s
