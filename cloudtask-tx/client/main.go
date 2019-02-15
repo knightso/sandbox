@@ -22,20 +22,6 @@ const queueID = "put-data"
 func main() {
 	log.SetFlags(log.Lshortfile)
 
-	rand.Seed(time.Now().UnixNano())
-	val := rand.Float64()
-
-	id := uuid.Must(uuid.NewV4()).String()
-
-	log.Printf("putting id:%s\n", id)
-
-	sample := tasktx.Sample{
-		ID:        id,
-		Title:     fmt.Sprintf("title %f", val),
-		Value:     val,
-		CreatedAt: time.Now(),
-	}
-
 	c := context.Background()
 
 	client, err := datastore.NewClient(c, projectID)
@@ -43,17 +29,27 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	sample := tasktx.Sample{
+		ID:        uuid.Must(uuid.NewV4()).String(),
+		Value:     rand.Float64(),
+		CreatedAt: time.Now(),
+	}
+
+	// Taskのタイムアウトよりも短くする必要がある
+	// Cloud Tasks APIは30sec以上のタイムアウトを指定できない
 	c, cancel := context.WithTimeout(c, 30*time.Second)
 	defer cancel()
 
 	_, err = client.RunInTransaction(c, func(tx *datastore.Transaction) error {
 
+		// Sampleモデル保存
 		key := datastore.NameKey("Sample", sample.ID, nil)
 		if _, err := tx.Put(key, &sample); err != nil {
 			log.Println("put model failed")
 			return err
 		}
 
+		// Txステータスの保存
 		txStatus := &tasktx.TxStatus{
 			ID:        uuid.Must(uuid.NewV4()).String(),
 			CreatedAt: time.Now(),
@@ -65,7 +61,8 @@ func main() {
 			return err
 		}
 
-		if err := startTask(c, txStatus.ID, sample); err != nil {
+		// タスク起動
+		if err := addTask(c, txStatus.ID, sample); err != nil {
 			return err
 		}
 
@@ -81,7 +78,7 @@ func main() {
 	log.Println("done")
 }
 
-func startTask(ctx context.Context, txID string, sample tasktx.Sample) error {
+func addTask(ctx context.Context, txID string, sample tasktx.Sample) error {
 	client, err := cloudtasks.NewClient(ctx)
 	if err != nil {
 		log.Println("cloudtasks NewClient failed")
@@ -95,11 +92,9 @@ func startTask(ctx context.Context, txID string, sample tasktx.Sample) error {
 
 	queuePath := fmt.Sprintf("projects/%s/locations/us-central1/queues/%s", projectID, queueID)
 
-	// https://godoc.org/google.golang.org/genproto/googleapis/cloud/tasks/v2beta3#CreateTaskRequest
 	req := &taskspb.CreateTaskRequest{
 		Parent: queuePath,
 		Task: &taskspb.Task{
-			// https://godoc.org/google.golang.org/genproto/googleapis/cloud/tasks/v2beta3#AppEngineHttpRequest
 			PayloadType: &taskspb.Task_AppEngineHttpRequest{
 				AppEngineHttpRequest: &taskspb.AppEngineHttpRequest{
 					HttpMethod:  taskspb.HttpMethod_POST,
