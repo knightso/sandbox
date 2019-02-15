@@ -15,7 +15,7 @@ import (
 	taskspb "google.golang.org/genproto/googleapis/cloud/tasks/v2beta3"
 )
 
-const projectID = ""
+const projectID = "metal-bus-589"
 
 const queueID = "put-data"
 
@@ -25,50 +25,76 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 	val := rand.Float64()
 
-	m := tasktx.Model{
-		ID:    uuid.Must(uuid.NewV4()).String(),
-		Title: fmt.Sprintf("title %f", val),
-		Value: val,
+	id := uuid.Must(uuid.NewV4()).String()
+
+	log.Printf("putting id:%s\n", id)
+
+	sample := tasktx.Sample{
+		ID:        id,
+		Title:     fmt.Sprintf("title %f", val),
+		Value:     val,
+		CreatedAt: time.Now(),
 	}
 
-	ctx := context.Background()
+	c := context.Background()
 
-	client, err := datastore.NewClient(ctx, projectID)
+	client, err := datastore.NewClient(c, projectID)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	_, err = client.RunInTransaction(ctx, func(tx *datastore.Transaction) error {
-		key := datastore.NameKey("Model", m.ID, nil)
-		if _, err := tx.Put(key, &m); err != nil {
+	c, cancel := context.WithTimeout(c, 30*time.Second)
+	defer cancel()
+
+	_, err = client.RunInTransaction(c, func(tx *datastore.Transaction) error {
+
+		key := datastore.NameKey("Sample", sample.ID, nil)
+		if _, err := tx.Put(key, &sample); err != nil {
+			log.Println("put model failed")
 			return err
 		}
 
-		if err := startTask(ctx, m); err != nil {
+		txStatus := &tasktx.TxStatus{
+			ID:        uuid.Must(uuid.NewV4()).String(),
+			CreatedAt: time.Now(),
+		}
+
+		txStatusKey := datastore.NameKey("TxStatus", txStatus.ID, nil)
+		if _, err := tx.Put(txStatusKey, txStatus); err != nil {
+			log.Println("put txStatus failed")
 			return err
 		}
+
+		if err := startTask(c, txStatus.ID, sample); err != nil {
+			return err
+		}
+
+		//time.Sleep(40 * time.Second)
+
 		return nil
 	})
 
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+
+	log.Println("done")
 }
 
-func startTask(ctx context.Context, m tasktx.Model) error {
+func startTask(ctx context.Context, txID string, sample tasktx.Sample) error {
 	client, err := cloudtasks.NewClient(ctx)
 	if err != nil {
+		log.Println("cloudtasks NewClient failed")
 		return err
 	}
 
-	b, err := json.Marshal(m)
+	b, err := json.Marshal(sample)
 	if err != nil {
 		return err
 	}
 
 	queuePath := fmt.Sprintf("projects/%s/locations/us-central1/queues/%s", projectID, queueID)
 
-	// Build the Task payload.
 	// https://godoc.org/google.golang.org/genproto/googleapis/cloud/tasks/v2beta3#CreateTaskRequest
 	req := &taskspb.CreateTaskRequest{
 		Parent: queuePath,
@@ -79,11 +105,20 @@ func startTask(ctx context.Context, m tasktx.Model) error {
 					HttpMethod:  taskspb.HttpMethod_POST,
 					RelativeUri: "/putdata",
 					Body:        b,
+					Headers: map[string]string{
+						"X-TaskTx-ID":           txID,
+						"X-TaskTx-DispatchTime": time.Now().Format(time.RFC3339Nano),
+					},
 				},
 			},
 		},
 	}
 
 	_, err = client.CreateTask(ctx, req)
-	return err
+	if err != nil {
+		log.Println("CreateTask failed")
+		return err
+	}
+
+	return nil
 }
