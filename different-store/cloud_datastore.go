@@ -7,7 +7,6 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"google.golang.org/api/iterator"
-	"google.golang.org/api/option"
 	"google.golang.org/appengine"
 )
 
@@ -20,7 +19,7 @@ type SampleModel struct {
 func getCloudDataStore(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 	projectID := os.Getenv("STORE_PROJECT")
-	client, err := datastore.NewClient(ctx, projectID, option.WithCredentialsFile("./serviceKey.json"))
+	client, err := datastore.NewClient(ctx, projectID)
 
 	if err != nil {
 		fmt.Fprintf(w, "error: %s", err.Error())
@@ -42,7 +41,7 @@ func getCloudDataStore(w http.ResponseWriter, r *http.Request) {
 func putCloudDataStore(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 	projectID := os.Getenv("STORE_PROJECT")
-	client, err := datastore.NewClient(ctx, projectID, option.WithCredentialsFile("./serviceKey.json"))
+	client, err := datastore.NewClient(ctx, projectID)
 
 	if err != nil {
 		fmt.Fprintf(w, "error-01: %s", err.Error())
@@ -66,7 +65,7 @@ func putCloudDataStore(w http.ResponseWriter, r *http.Request) {
 func deleteCloudDataStore(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 	projectID := os.Getenv("STORE_PROJECT")
-	client, err := datastore.NewClient(ctx, projectID, option.WithCredentialsFile("./serviceKey.json"))
+	client, err := datastore.NewClient(ctx, projectID)
 
 	if err != nil {
 		fmt.Fprintf(w, "error: %s", err.Error())
@@ -86,7 +85,7 @@ func deleteCloudDataStore(w http.ResponseWriter, r *http.Request) {
 func queryCloudDataStore(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 	projectID := os.Getenv("STORE_PROJECT")
-	client, err := datastore.NewClient(ctx, projectID, option.WithCredentialsFile("./serviceKey.json"))
+	client, err := datastore.NewClient(ctx, projectID)
 
 	if err != nil {
 		fmt.Fprintf(w, "error: %s", err.Error())
